@@ -26,3 +26,5 @@ build/
 .gradle/
 .idea/
 out/
+
+!gradle-wrapper.jar

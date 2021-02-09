@@ -9,13 +9,19 @@ plugins {
 group 'me.stylite.predator'
 version '1.0'
 
-sourceCompatibility = 1.8
+sourceCompatibility = 11
 mainClassName = 'me.stylite.predator.Predator'
 
 repositories {
     mavenCentral()
     jcenter()
     maven { url 'https://jitpack.io' }
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'me.stylite.predator.Predator'
+    }
 }
 
 dependencies {
@@ -34,11 +40,21 @@ dependencies {
     //Misc
     implementation 'com.google.code.gson:gson:2.8.6'
     implementation 'org.discordbots:DBL-Java-Library:2.0.1'
+
+    compile "org.jetbrains.kotlin:kotlin-stdlib"
 }
 
 compileKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "11"
 }
 compileTestKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "11"
 }
+
+task copyToLib(type: Copy) {
+    into "$buildDir/libs"
+    from(configurations.compile)
+}
+
+task stage(dependsOn: ['copyToLib', 'build', 'clean'])
+stage.mustRunAfter clean

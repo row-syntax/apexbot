@@ -1,0 +1,1 @@
+worker: java $JAVA_OPTS -jar build/libs/ApexBot-1.0-all.jar
