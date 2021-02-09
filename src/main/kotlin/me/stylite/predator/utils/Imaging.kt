@@ -18,6 +18,26 @@ object Imaging {
             .await()
     }
 
+    private val RankPointBorder = mapOf(
+        "Predetor" to 0,
+        "Master" to 10000,
+        "Diamond" to 7200,
+        "Platinum" to 4800,
+        "Gold" to 2800,
+        "Silver" to 1200,
+        "Bronze" to 0
+    )
+
+    private val RankDivisionPoint = mapOf(
+        "Predetor" to 0,
+        "Master" to 0,
+        "Diamond" to 700,
+        "Platinum" to 600,
+        "Gold" to 500,
+        "Silver" to 400,
+        "Bronze" to 300
+    )
+
     /**
      * Scales an image, preserving its aspect ratio.
      */
@@ -38,6 +58,7 @@ object Imaging {
         val white = Color(255, 255, 255)
         val notQuiteWhite = Color(235, 235, 235)
         val barRed = Color(218, 41, 42)
+        val blue = Color(16, 58, 200)
         val black = Color(0, 0, 0)
         val gray = Color(168, 168, 168)
         val lightGray = Color(191, 191, 191)
@@ -126,18 +147,15 @@ object Imaging {
         val subTextMetrics = gfx.fontMetrics
         gfx.drawString("Ranked Score: ${rank.rankScore}", 280, 392 + subTextMetrics.ascent)
 
-        val bpBadge = Resources.battlepass
-        val bpIcon = ImageIO.read(bpBadge)
-        val scaledBp = scale(bpIcon, 105)
+        gfx.color = white
+        gfx.fillRect(275, 420, 174, 5)
 
-        gfx.drawImage(scaledBp, 310, 437, null)
-
-        gfx.font = font24
-
-        val bpLevelInt = profile.global.battlepass.level.toIntOrNull()?.coerceAtLeast(0) ?: 0
-        val bpLevelWidth = font24Metrics.stringWidth("Level: $bpLevelInt")
-        val bpLevelX = 310 + (105 - bpLevelWidth) / 2
-        gfx.drawString("Level: $bpLevelInt", bpLevelX, 585)
+        val rpb = RankPointBorder[rank.rankName]!!.toDouble()
+        val rdp = RankDivisionPoint[rank.rankName]!!.toDouble()
+        val rpdiv = ((rank.rankScore - rpb) / rdp)
+        val rankx = (174 * (rpdiv - rpdiv.toInt())).toInt()
+        gfx.color = blue
+        gfx.fillRect(275, 420, rankx, 5)
 
         gfx.dispose()
 
