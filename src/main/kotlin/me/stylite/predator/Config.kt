@@ -14,6 +14,9 @@ object Config {
             conf.setProperty("prefix", System.getenv()["PREFIX"])
             conf.setProperty("token", System.getenv()["TOKEN"])
             conf.setProperty("apiKey", System.getenv()["APIKEY"])
+            conf.setProperty("redisHost", System.getenv()["REDISHOST"])
+            conf.setProperty("redisPass", System.getenv()["REDISPASS"])
+            conf.setProperty("redisPort", System.getenv()["REDISPORT"])
 //            conf.setProperty("dblkey", System.getenv()["DBLKEY"])
         }
     }
@@ -24,5 +27,8 @@ object Config {
     val prefix = this["prefix"].split(", ")
     val token = this["token"]
     val apiKey = this["apiKey"]
+    val redisHost = this["redisHost"]
+    val redisPass = this["redisPass"]
+    val redisPort = this["redisPort"]
     //val dblKey = this["dblkey"]
 }

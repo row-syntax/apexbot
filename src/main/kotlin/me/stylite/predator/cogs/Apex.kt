@@ -1,5 +1,7 @@
 package me.stylite.predator.cogs
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.gson.Gson
 import me.devoxin.flight.api.Context
 import me.devoxin.flight.api.annotations.Command
@@ -8,12 +10,13 @@ import me.devoxin.flight.api.annotations.Greedy
 import me.devoxin.flight.api.entities.Attachment
 import me.devoxin.flight.api.entities.BucketType
 import me.devoxin.flight.api.entities.Cog
+import me.stylite.predator.Config
 import me.stylite.predator.models.APIException
+import me.stylite.predator.models.json.UserInfo
 import me.stylite.predator.models.news.ApexNews
 import me.stylite.predator.models.stats.ApexProfile
-import me.stylite.predator.utils.Http
-import me.stylite.predator.utils.Imaging
-import me.stylite.predator.utils.RandomItems
+import me.stylite.predator.utils.*
+import redis.clients.jedis.Jedis
 import java.util.concurrent.TimeUnit
 
 class Apex : Cog {
@@ -77,6 +80,47 @@ class Apex : Cog {
 
         val user = gson.fromJson(response, ApexProfile::class.java)
         transform(user)
+    }
+
+    private fun apiCommandNoFetch(ctx: Context, platform: String, username: String, transform: suspend ApexProfile.() -> Unit) {
+        val platformUpper = platform.toUpperCase()
+        if (platformUpper !in validPlatforms) {
+            return ctx.send("Invalid platform. ${validPlatforms.joinToString("`, `", prefix = "`", postfix = "`")}\nExample: `a)command [X1/PS4/PC] [Username]`")
+        }
+        if (username.isEmpty()) {
+            return ctx.send("Invalid username.\nExample: `a)command [X1/PS4/PC] [Username]`")
+        }
+    }
+
+//    @Command(description = "set apex main account.")
+//    fun a(ctx: Context) {
+//        println(ctx.message.mentionedUsers[0])
+//        ctx.send ("a")
+//    }
+
+    @Suppress("BlockingMethodInNonBlockingContext")
+    @Command(description = "set apex main account.")
+    fun set(ctx: Context, platform: String, @Greedy username: String) = apiCommandNoFetch(ctx, platform, username) {
+        val userInfo = UserInfo(ctx.member?.user?.name!!, platform, username)
+        val redis = Jedis(Config.redisHost, Config.redisPort.toInt())
+        redis.auth(Config.redisPass)
+        redis.set(ctx.member?.user?.id, jacksonObjectMapper().writeValueAsString(userInfo))
+        redis.close()
+
+        ctx.send ("set: ${ctx.member?.user?.name} = $username on $platform")
+    }
+
+    @Command(description = "get apex main account profile.")
+    suspend fun me(ctx: Context) {
+        val redis = Jedis(Config.redisHost, Config.redisPort.toInt())
+        redis.auth(Config.redisPass)
+        val userInfoJson = redis.get(ctx.member?.user?.id)
+        redis.close()
+        if (userInfoJson.isEmpty()) {
+            ctx.send ("you must 'set' command.")
+        }
+        val userInfo = jacksonObjectMapper().readValue<UserInfo>(userInfoJson)
+        profile(ctx, userInfo.platform, userInfo.gameID)
     }
 
     @Command(description = "Get stats of a player")

@@ -42,6 +42,8 @@ dependencies {
     implementation 'org.discordbots:DBL-Java-Library:2.0.1'
 
     compile "org.jetbrains.kotlin:kotlin-stdlib"
+    compile 'redis.clients:jedis:3.5.1'
+    compile "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.0"
 }
 
 compileKotlin {
