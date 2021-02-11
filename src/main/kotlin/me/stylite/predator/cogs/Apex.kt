@@ -10,13 +10,11 @@ import me.devoxin.flight.api.annotations.Greedy
 import me.devoxin.flight.api.entities.Attachment
 import me.devoxin.flight.api.entities.BucketType
 import me.devoxin.flight.api.entities.Cog
-import me.stylite.predator.Config
 import me.stylite.predator.models.APIException
 import me.stylite.predator.models.json.UserInfo
 import me.stylite.predator.models.news.ApexNews
 import me.stylite.predator.models.stats.ApexProfile
 import me.stylite.predator.utils.*
-import redis.clients.jedis.Jedis
 import java.util.concurrent.TimeUnit
 
 class Apex : Cog {
@@ -101,26 +99,19 @@ class Apex : Cog {
     @Suppress("BlockingMethodInNonBlockingContext")
     @Command(description = "set apex main account.")
     fun set(ctx: Context, platform: String, @Greedy username: String) = apiCommandNoFetch(ctx, platform, username) {
-        val userInfo = UserInfo(ctx.member?.user?.name!!, platform, username)
-        val redis = Jedis(Config.redisHost, Config.redisPort.toInt())
-        redis.auth(Config.redisPass)
-        redis.set(ctx.member?.user?.id, jacksonObjectMapper().writeValueAsString(userInfo))
-        redis.close()
-
+        val userInfo = UserInfo(ctx.member?.user?.name!!, platform, username, 0)
+        Redis.setValByKey(ctx.member?.user?.id!!, jacksonObjectMapper().writeValueAsString(userInfo))
         ctx.send ("set: ${ctx.member?.user?.name} = $username on $platform")
     }
 
     @Command(description = "get apex main account profile.")
     suspend fun me(ctx: Context) {
-        val redis = Jedis(Config.redisHost, Config.redisPort.toInt())
-        redis.auth(Config.redisPass)
-        val userInfoJson = redis.get(ctx.member?.user?.id)
-        redis.close()
+        val userInfoJson = Redis.getValByKey(ctx.member?.user?.id!!)
         if (userInfoJson.isEmpty()) {
             ctx.send ("you must 'set' command.")
         }
         val userInfo = jacksonObjectMapper().readValue<UserInfo>(userInfoJson)
-        profile(ctx, userInfo.platform, userInfo.gameID)
+        p(ctx, userInfo.platform, userInfo.gameID)
     }
 
     @Command(description = "Get stats of a player")
@@ -226,10 +217,36 @@ class Apex : Cog {
 
     @Command(description = "Displays your statistics in a profile card")
     @Cooldown(5, TimeUnit.SECONDS, BucketType.USER)
-    suspend fun profile(ctx: Context, platform: String, @Greedy username: String) = apiCommand(ctx, platform, username) {
-        val card = Imaging.generateProfileCard(this)
+    suspend fun p(ctx: Context, platform: String, @Greedy username: String) = apiCommand(ctx, platform, username) {
+        val userOwnInfoJson = Redis.getValByKey(ctx.member?.user?.id!!)
+        var userInfo: UserInfo
+        if (userOwnInfoJson.isNotEmpty()) {
+            userInfo = jacksonObjectMapper().readValue(userOwnInfoJson)
+            if (userInfo.gameID == username) {
+                Redis.setValByKey(
+                    ctx.member?.user?.id!!,
+                    jacksonObjectMapper().writeValueAsString(userInfo.copy(beforeRankPoint = this.global.rank.rankScore))
+                )
+            } else {
+                userInfo = setUnknownUser(platform, username, this)
+            }
+        } else {
+            userInfo =setUnknownUser(platform, username, this)
+        }
+        val card = Imaging.generateProfileCard(this, userInfo)
         val attachment = Attachment.from(card, "profile.png")
         ctx.send(attachment)
+    }
+
+    private fun setUnknownUser(platform: String, username: String, profile: ApexProfile) : UserInfo {
+        val userInfoJson = Redis.getValByKey("$username@$platform")
+        val userInfo = if (userInfoJson.isNotEmpty()) {
+            jacksonObjectMapper().readValue(userInfoJson)
+        } else {
+            UserInfo("", platform, username, profile.global.rank.rankScore)
+        }
+        Redis.setValByKey("$username@$platform", jacksonObjectMapper().writeValueAsString(userInfo.copy(beforeRankPoint = profile.global.rank.rankScore)))
+        return userInfo
     }
 
 //    @Command(description = "View information on the Apex server status")

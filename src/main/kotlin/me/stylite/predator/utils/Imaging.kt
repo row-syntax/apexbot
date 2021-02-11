@@ -1,6 +1,7 @@
 package me.stylite.predator.utils
 
 import kotlinx.coroutines.future.await
+import me.stylite.predator.models.json.UserInfo
 import me.stylite.predator.models.stats.ApexProfile
 import java.awt.Color
 import java.awt.Font
@@ -13,8 +14,8 @@ import javax.imageio.ImageIO
 
 object Imaging {
 
-    suspend fun generateProfileCard(profile: ApexProfile): ByteArray {
-        return CompletableFuture.supplyAsync { generateProfileCard0(profile) }
+    suspend fun generateProfileCard(profile: ApexProfile, userInfo: UserInfo): ByteArray {
+        return CompletableFuture.supplyAsync { generateProfileCard0(profile, userInfo) }
             .await()
     }
 
@@ -47,18 +48,20 @@ object Imaging {
         return bufferedImage.getScaledInstance(width, newHeight, bufferedImage.type)
     }
 
-    private fun generateProfileCard0(profile: ApexProfile): ByteArray {
+    private fun generateProfileCard0(profile: ApexProfile, userInfo: UserInfo): ByteArray {
         val baseFont = Resources.font
         // Fonts
         val font32 = baseFont.deriveFont(32f)
         val font28 = baseFont.deriveFont(28f)
         val font24 = baseFont.deriveFont(24f)
+        val font20 = baseFont.deriveFont(20f)
         val font18 = baseFont.deriveFont(18f)
         // Colors
         val white = Color(255, 255, 255)
         val notQuiteWhite = Color(235, 235, 235)
         val barRed = Color(218, 41, 42)
         val blue = Color(16, 58, 200)
+        val lightBlue = Color(25, 199, 200)
         val black = Color(0, 0, 0)
         val gray = Color(168, 168, 168)
         val lightGray = Color(191, 191, 191)
@@ -119,7 +122,7 @@ object Imaging {
 
         val legendWidth = font32Metrics.stringWidth(legendName)
         val legendNameX = 11 + (221 - legendWidth) / 2
-        gfx.drawString(legendName, legendNameX, 432 + font32Metrics.ascent)
+        gfx.drawString(legendName, legendNameX, 422 + font32Metrics.ascent)
 
         gfx.font = font18
         gfx.color = lightGray
@@ -127,8 +130,11 @@ object Imaging {
 
         val entries = profile.legends.selected.data.filter { it.name != null }.take(6)
         for ((i, entry) in entries.withIndex()) {
-            val offset = 472 + (28 * (i + 1))
-            gfx.drawString("${entry.name}: ${entry.value}", 13, offset)
+            val offset = 425 + (28 * (i + 1) * 2)
+            gfx.font = font20
+            gfx.drawString("${entry.name}", 13, offset)
+            gfx.font = font18
+            gfx.drawString("-> ${entry.value}", 13, offset + 27)
         }
 
         val rank = profile.global.rank
@@ -142,20 +148,45 @@ object Imaging {
             else -> 280
         }
         gfx.color = notQuiteWhite
-        gfx.drawString("${rank.rankName} (Division ${rank.rankDiv})", rankHeight, 357 + font32Metrics.ascent)
-
         val subTextMetrics = gfx.fontMetrics
-        gfx.drawString("Ranked Score: ${rank.rankScore}", 280, 392 + subTextMetrics.ascent)
+        gfx.drawString("Platform: ${profile.global.platform}", 280, 365 + subTextMetrics.ascent)
+        gfx.drawString("${rank.rankName} (Division ${rank.rankDiv})", rankHeight, 382 + font32Metrics.ascent)
+
+        gfx.drawString("Rank Points: ${rank.rankScore}", 280, 419 + subTextMetrics.ascent)
 
         gfx.color = white
-        gfx.fillRect(275, 420, 174, 5)
+        gfx.fillRect(275, 455, 174, 5)
 
         val rpb = RankPointBorder[rank.rankName]!!.toDouble()
         val rdp = RankDivisionPoint[rank.rankName]!!.toDouble()
         val rpdiv = ((rank.rankScore - rpb) / rdp)
         val rankx = (174 * (rpdiv - rpdiv.toInt())).toInt()
         gfx.color = blue
-        gfx.fillRect(275, 420, rankx, 5)
+        gfx.fillRect(275, 455, rankx, 5)
+
+        var rankDiff = userInfo.beforeRankPoint - rank.rankScore
+        val upDown: String
+        when {
+            rankDiff < 0 -> {
+                rankDiff *= -1
+                gfx.color = lightBlue
+                upDown = "$rankDiff up"
+            }
+            rankDiff > 0 -> {
+                gfx.color = barRed
+                upDown = "$rankDiff down"
+            }
+            else -> {
+                gfx.color = white
+                upDown = ""
+            }
+        }
+        if (upDown.isNotEmpty()){
+            gfx.drawString("Your RP is $upDown", 285, 467 + subTextMetrics.ascent)
+            gfx.color = white
+
+            gfx.drawString("from previous view", 285, 487 + subTextMetrics.ascent)
+        }
 
         gfx.dispose()
 
