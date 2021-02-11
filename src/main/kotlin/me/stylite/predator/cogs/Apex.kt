@@ -80,25 +80,20 @@ class Apex : Cog {
         transform(user)
     }
 
-    private fun apiCommandNoFetch(ctx: Context, platform: String, username: String, transform: suspend ApexProfile.() -> Unit) {
+    @Command(description = "set apex main account.")
+    fun set(ctx: Context, platform: String, @Greedy username: String) {
         val platformUpper = platform.toUpperCase()
         if (platformUpper !in validPlatforms) {
-            return ctx.send("Invalid platform. ${validPlatforms.joinToString("`, `", prefix = "`", postfix = "`")}\nExample: `a)command [X1/PS4/PC] [Username]`")
+            return ctx.send(
+                "Invalid platform. ${
+                    validPlatforms.joinToString(
+                        "`, `",
+                        prefix = "`",
+                        postfix = "`"
+                    )
+                }\nExample: `a)set [X1/PS4/PC] [Username]`"
+            )
         }
-        if (username.isEmpty()) {
-            return ctx.send("Invalid username.\nExample: `a)command [X1/PS4/PC] [Username]`")
-        }
-    }
-
-//    @Command(description = "set apex main account.")
-//    fun a(ctx: Context) {
-//        println(ctx.message.mentionedUsers[0])
-//        ctx.send ("a")
-//    }
-
-    @Suppress("BlockingMethodInNonBlockingContext")
-    @Command(description = "set apex main account.")
-    fun set(ctx: Context, platform: String, @Greedy username: String) = apiCommandNoFetch(ctx, platform, username) {
         val userInfo = UserInfo(ctx.member?.user?.name!!, platform, username, 0)
         Redis.setValByKey(ctx.member?.user?.id!!, jacksonObjectMapper().writeValueAsString(userInfo))
         ctx.send ("set: ${ctx.member?.user?.name} = $username on $platform")
