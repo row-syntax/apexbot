@@ -20,7 +20,7 @@ object Redis {
     fun setValByKey(key: String, value: String) {
         val redis = init()
         redis.set(key, value)
-        redis.expire(key, 60 * 60 * 24 * 30) // 7days
+        redis.expire(key, 60 * 60 * 24 * 30) // 30days
         redis.close()
     }
 
